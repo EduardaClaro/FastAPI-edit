@@ -2,6 +2,7 @@ from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import StreamingResponse
 from PIL import Image
 import io
+import os
 import rembg
 import numpy as np
 import uvicorn
@@ -11,7 +12,7 @@ import mimetypes
 try:
     from pdf2image import convert_from_bytes
 except ImportError:
-    convert_from_bytes = None  # pdf2image não instalado
+    convert_from_bytes = None  
 
 app = FastAPI()
 
@@ -43,6 +44,15 @@ async def upload_image(file: UploadFile = File(...)):
             buffered.seek(0)
             output_buffers.append(buffered)
 
+        os.makedirs("media/sem_fundo", exist_ok=True)
+
+        # Salva as imagens processadas
+        for idx, buf in enumerate(output_buffers):
+            filename = file.filename.rsplit('.', 1)[0]  # remove extensão original
+            save_path = f"media/sem_fundo/{filename}_page_{idx+1}.png"
+            with open(save_path, "wb") as f:
+                f.write(buf.getvalue())
+
         # Se for só uma imagem, retorna direto
         if len(output_buffers) == 1:
             return StreamingResponse(output_buffers[0], media_type='image/png')
@@ -58,4 +68,4 @@ async def upload_image(file: UploadFile = File(...)):
         return {'error': str(e)}
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8080)
